@@ -46,6 +46,7 @@ passlib==1.7.4
 pluggy==1.6.0
 prompt_toolkit==3.0.52
 propcache==0.4.1
+psycopg2-binary==2.9.11
 pycparser==2.23
 pycryptodome==3.23.0
 pydantic==2.12.3
