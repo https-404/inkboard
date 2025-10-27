@@ -2,7 +2,11 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 from app.core.deps import get_db
-from app.schemas.auth import LoginResponse, UserOut, SignupRequest, LoginRequest, SignupResponse
+from app.schemas.auth import (
+    LoginResponse, UserOut, SignupRequest,
+    LoginRequest, SignupResponse, RefreshRequest,
+    RefreshResponse
+)
 from app.services.auth_service import AuthService
 
 auth_router = APIRouter(prefix="/auth", tags=["auth"])
@@ -66,6 +70,38 @@ async def login(
     try:
         service = AuthService(db)
         return await service.login(req)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@auth_router.post(
+    "/refresh",
+    summary="Refresh Access and Refresh Tokens",
+    response_model=LoginResponse,  # Using LoginResponse as it contains both tokens
+)
+async def refresh_token(
+    req: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Refresh access token using a valid refresh token.
+    
+    Args:
+        req: The refresh token request containing a valid refresh JWT
+        db: Database session
+        
+    Returns:
+        A new access token
+        
+    Raises:
+        HTTPException: If refresh token is invalid, expired, or revoked
+    """
+    try:
+        service = AuthService(db)
+        return await service.refresh_token(req)
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

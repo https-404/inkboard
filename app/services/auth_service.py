@@ -1,8 +1,10 @@
 import secrets
 import logging
 from datetime import datetime, timedelta, timezone
+import jwt
+from app.core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select, update, and_
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from fastapi import HTTPException, status
 
@@ -14,6 +16,7 @@ from app.core.security import (
     verify_password,
     create_access_token,
     create_refresh_token,
+    utc_now,
 )
 from app.schemas.auth import (
     SignupRequest,
@@ -37,6 +40,110 @@ class AuthService:
 
     def __init__(self, db: AsyncSession):
         self.db = db
+
+    async def refresh_token(self, req: RefreshRequest) -> RefreshResponse:
+        """
+        Refresh an access token using a valid refresh token.
+
+        Args:
+            req: Request containing a valid refresh token
+
+        Returns:
+            A new access token
+
+        Raises:
+            ValueError: If refresh token is invalid, expired, or has been revoked
+        """
+        # Decode token without verification first to get the JTI
+        try:
+            unverified_payload = jwt.decode(
+                req.refresh_token,
+                options={"verify_signature": False}
+            )
+        except jwt.InvalidTokenError as e:
+            raise ValueError(f"Invalid token format: {str(e)}")
+            
+        if unverified_payload.get("type") != "refresh":
+            raise ValueError("Invalid token type")
+
+            # Find the token in the database
+            stmt = select(Token).join(User).where(
+                and_(
+                    Token.jti == unverified_payload.get("jti"),
+                    Token.revoked.is_(False),
+                    Token.expires_at > utc_now()
+                )
+            )
+            result = await self.db.execute(stmt)
+            token_record = result.scalar_one_or_none()
+
+            if not token_record:
+                raise ValueError("Token not found or has been revoked")
+
+            # Verify the token signature and claims
+            try:
+                payload = jwt.decode(
+                    req.refresh_token,
+                    settings.SECRET_KEY,
+                    algorithms=[settings.ALGORITHM]
+                )
+            except jwt.InvalidTokenError as e:
+                await self._revoke_token(token_record.jti)
+                raise ValueError(f"Invalid token: {str(e)}")
+
+            # Revoke the old refresh token
+            await self._revoke_token(token_record.jti)
+            
+            # Generate new token pair
+            access_token = create_access_token(
+                user_id=token_record.user.id,
+                email=token_record.user.email,
+                username=token_record.user.username,
+                role=token_record.user.role,
+            )
+            
+            refresh_token, jti, expires_at = create_refresh_token(
+                user_id=token_record.user.id,
+                email=token_record.user.email,
+                username=token_record.user.username,
+                role=token_record.user.role,
+            )
+
+            # Store new refresh token
+            new_token = Token(
+                user_id=token_record.user.id,
+                jti=jti,
+                token=refresh_token,  # Consider hashing for additional security
+                user_agent=token_record.user_agent,  # Preserve the original session info
+                ip_address=token_record.ip_address,
+                expires_at=expires_at,
+            )
+            self.db.add(new_token)
+            await self.db.commit()
+
+            return LoginResponse(
+                access_token=access_token,
+                refresh_token=refresh_token,
+                token_type="bearer"
+            )
+
+    async def _revoke_token(self, jti: str) -> None:
+        """
+        Revoke a refresh token by its JTI.
+
+        Args:
+            jti: The unique identifier of the token to revoke
+        """
+        stmt = (
+            update(Token)
+            .where(Token.jti == jti)
+            .values(
+                revoked=True,
+                revoked_at=utc_now()
+            )
+        )
+        await self.db.execute(stmt)
+        await self.db.commit()
 
     async def signup(self, req: SignupRequest) -> SignupResponse:
         try:
