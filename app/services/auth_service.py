@@ -52,8 +52,8 @@ class AuthService:
             logger.info(f"[AuthService] Created user {req.email}")
 
             return SignupResponse(
-                user=UserOut.model_validate(user),
                 message="Signup successful, please verify your email",
+                success=True
             )
 
         except IntegrityError:
@@ -97,10 +97,7 @@ class AuthService:
 
             logger.info(f"[AuthService] Login success for {req.email}")
 
-            return LoginResponse(
-                user=UserOut.model_validate(user),
-                tokens=TokenPair(**tokens),
-            )
+            return LoginResponse(**tokens)
 
         except HTTPException:
             raise

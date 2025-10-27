@@ -1,12 +1,14 @@
+import uuid
 from sqlalchemy.orm import Mapped, mapped_column
-from sqlalchemy import String, Boolean, Integer, Text, DateTime, func
+from sqlalchemy import String, Boolean, Text, DateTime, func
+from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 
 class User(Base):
     """
     Represents a user in the system.
     """
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     username: Mapped[str] = mapped_column(String(50), unique=True, index=True, nullable=False)
     first_name: Mapped[str] = mapped_column(String(50), nullable=True)

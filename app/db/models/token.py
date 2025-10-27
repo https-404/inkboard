@@ -1,13 +1,15 @@
+import uuid
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy import Integer, String, DateTime, Boolean, ForeignKey, Index, func
+from sqlalchemy import String, DateTime, Boolean, ForeignKey, Index, func
+from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
 
 class Token(Base):
     """
     Stores refresh tokens (or their JTI) server-side so we can revoke/rotate.
     """
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), index=True, nullable=False)
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), index=True, nullable=False)
 
     jti: Mapped[str] = mapped_column(String(64), unique=True, nullable=False)  # unique token id
     token: Mapped[str] = mapped_column(String(2048), nullable=False)  # optional: store whole token (or hash)

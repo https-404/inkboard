@@ -8,11 +8,14 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def hash_password(password: str) -> str:
     """Hash a plaintext password."""
-    return pwd_context.hash(password)
+    password_bytes = password.encode('utf-8')[:72]
+    return pwd_context.hash(password_bytes.decode('utf-8'))
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plaintext password against a hashed password."""
-    return pwd_context.verify(plain_password, hashed_password)
+    # Ensure consistent handling of password length for verification
+    plain_password_bytes = plain_password.encode('utf-8')[:72]
+    return pwd_context.verify(plain_password_bytes.decode('utf-8'), hashed_password)
 
 def utc_now() -> datetime:
     """Get the current UTC time."""
