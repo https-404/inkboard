@@ -25,4 +25,15 @@ class Settings(BaseSettings):
     MINIO_SECURE: bool = False
 
 
+    #Email Settings
+    SMTP_SERVER: str
+    SMTP_PORT: int
+    SMTP_USERNAME: str
+    SMTP_PASSWORD: str
+    EMAIL_FROM: str
+    EMAIL_FROM_NAME: str
+    SMTP_STARTTLS: bool
+    SMTP_SSL: bool
+
+
 settings = Settings()
