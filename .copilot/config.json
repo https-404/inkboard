@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "behavior": {
+    "description": "InkBoard backend using FastAPI, SQLAlchemy async, Redis, MinIO, and JWT auth with /api prefix.",
+    "rules": [
+      "Use async FastAPI endpoints and async SQLAlchemy sessions.",
+      "All API routes live under app/api and use /api prefix.",
+      "All request and response models for a domain live together in app/schemas/<domain>.py.",
+      "Never generate separate request.py or responses.py files.",
+      "Always import settings from app/core/config.py for configuration values.",
+      "Use Pydantic v2 (BaseModel, model_validate, model_dump).",
+      "Use dependency injection (Depends) for DB and auth.",
+      "Use uuid.UUID for IDs, and timezone-aware datetime fields.",
+      "Follow black formatting (88 chars)."
+    ],
+    "preferredFrameworks": ["FastAPI", "SQLAlchemy", "Pydantic", "Celery"],
+    "discouraged": [
+      "Mixing sync and async DB code",
+      "Using global state or raw SQL",
+      "Duplicating DTOs or routes",
+      "Adding versioned prefixes like /v1 or /v2"
+    ]
+  },
+  "context": {
+    "pythonVersion": "3.12",
+    "projectType": "backend",
+    "mainFramework": "FastAPI"
+  }
+}

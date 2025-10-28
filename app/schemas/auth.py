@@ -1,61 +1,50 @@
 from datetime import datetime
+from typing import Optional
+from pydantic import BaseModel, EmailStr, Field, constr
 import uuid
-from typing import Optional, Annotated
-from pydantic import BaseModel, EmailStr, Field, StringConstraints
 
-# Base Models
+
+# -------- Base --------
 class UserBase(BaseModel):
     email: EmailStr
-    username: str
+    username: constr(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')
 
 class BaseResponse(BaseModel):
-    """Base response with message and success status"""
     message: str
     success: bool = True
 
-class TokenBase(BaseModel):
-    """Base token response"""
-    access_token: str
-    token_type: str = "bearer"
-
-class TokenPair(TokenBase):
-    """Response containing both access and refresh tokens"""
-    refresh_token: str
-
-# Request Models
-class VerifyEmailRequest(BaseModel):
-    """Request payload for email verification"""
-    email: EmailStr = Field(..., example="john@example.com")
-    otp: Annotated[str, StringConstraints(min_length=6, max_length=6, pattern=r'^\d{6}$')] = Field(..., example="123456")
-
-class VerifyEmailResponse(BaseResponse):
-    """Response for email verification"""
-    pass
-
-# Request Models
-class SignupRequest(BaseModel):
-    """Request payload for user signup"""
-    email: EmailStr = Field(..., example="john@example.com")
-    username: Annotated[str, StringConstraints(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')]
-    password: Annotated[str, StringConstraints(min_length=8, max_length=72)]
+# -------- Requests --------
+class SignupRequest(UserBase):
+    password: constr(min_length=8, max_length=72)
 
 class LoginRequest(BaseModel):
-    """Request payload for user login"""
     email: EmailStr
     password: str
 
-class RefreshRequest(BaseModel):
-    """Request payload for token refresh"""
+class RefreshTokenRequest(BaseModel):
     refresh_token: str = Field(..., description="Valid refresh JWT")
 
-class OTPVerifyRequest(BaseModel):
-    """Request payload for OTP verification"""
-    code: str = Field(..., min_length=4, max_length=8)
-    purpose: str = Field(..., description="Purpose of OTP e.g. 'verify_email' or 'reset_password'")
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    otp: constr(min_length=6, max_length=6, pattern=r'^\d{6}$')
 
-# Response Models
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+class ResetPasswordRequest(BaseModel):
+    otp: constr(min_length=6, max_length=6, pattern=r'^\d{6}$')
+    new_password: constr(min_length=8, max_length=72)
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+# -------- Responses --------
+class TokenPair(BaseModel):
+    access_token: str
+    refresh_token: str
+    token_type: str = "bearer"
+
 class UserOut(UserBase):
-    """User response payload (public-safe)"""
     id: uuid.UUID
     role: str
     is_verified: bool
@@ -66,14 +55,9 @@ class UserOut(UserBase):
     class Config:
         from_attributes = True
 
-class SignupResponse(BaseResponse):
-    """Response for successful signup"""
-    pass
-
-class LoginResponse(TokenPair):
-    """Response for successful login - contains only tokens"""
-    pass
-
-class RefreshResponse(TokenBase):
-    """Response for token refresh - contains only the new access token"""
-    pass
+class SignupResponse(BaseResponse): pass
+class LoginResponse(TokenPair): pass
+class VerifyEmailResponse(BaseResponse): pass
+class RefreshResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"

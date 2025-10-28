@@ -1,0 +1,94 @@
+# ========================================
+#  InkBoard FastAPI Project — Cursor Rules
+# ========================================
+
+project:
+  name: "InkBoard"
+  description: >
+    A modern publishing platform built with FastAPI, SQLAlchemy (async),
+    PostgreSQL, Redis, MinIO, and JWT authentication. Features user signup/login,
+    article publishing, tagging, and rich interactions (claps, comments, follows).
+
+architecture:
+  - All backend code lives under `app/`
+  - Use `/api` prefix (not `/v1`)
+  - Each domain (auth, users, articles, comments, publications):
+      - Routes → `app/api/<domain>.py`
+      - Schemas → `app/schemas/<domain>.py` (both requests + responses)
+      - Services → `app/services/<domain>_service.py`
+      - Models → `app/db/models/<domain>.py`
+  - Shared logic → `app/core/` (config, security, deps, minio_client, etc.)
+  - Do NOT auto-create multiple DTO files (no requests.py / responses.py)
+  - Always prefer async/await, even in services.
+
+style:
+  python:
+    version: "3.12"
+    type_checking: strict
+    formatting: black
+    imports: isort
+    docstrings: google
+  naming:
+    classes: PascalCase
+    functions: snake_case
+    variables: snake_case
+  conventions:
+    - Use uuid.UUID for IDs
+    - datetime fields must be timezone-aware
+    - Use Pydantic v2 syntax (`model_validate`, `model_dump`)
+    - Keep schema examples small and readable
+    - Use Depends() for dependency injection
+    - Never call DB directly from routes; go through service layer
+
+api:
+  prefix: "/api"
+  docs:
+    enabled: true
+    swagger: true
+    redoc: true
+  responses:
+    model_enforced: true
+    base_model: BaseResponse
+  error_handling:
+    consistent: true
+    patterns:
+      - Use try/except inside services
+      - Raise HTTPException with clear message
+      - Return standardized BaseResponse
+
+auth:
+  jwt: true
+  refresh_tokens: true
+  password_hashing: bcrypt
+  otp_verification: true
+  email_verification: true
+  roles: [user, author, editor, admin]
+
+database:
+  engine: "SQLAlchemy 2.0 (async)"
+  dialect: "PostgreSQL"
+  migrations: "Alembic"
+  models_style:
+    naming: snake_case
+    schema: public
+  avoid:
+    - raw SQL
+    - sync sessions
+
+integrations:
+  redis: true
+  minio: true
+  celery: optional
+  smtp: via fastapi-mail
+
+cursor:
+  follow_rules:
+    - Never auto-generate multiple DTO layers
+    - Keep imports consistent with existing structure
+    - Ask before overwriting manually written code
+    - Generate only inside `app/` folder
+  ignore_files:
+    - .venv/
+    - alembic/
+    - node_modules/
+    - __pycache__/

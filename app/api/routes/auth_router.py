@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import Depends
 from app.core.deps import get_db
 from app.schemas.auth import (
-    LoginResponse, UserOut, SignupRequest,
+    ForgotPasswordRequest, LoginResponse, ResetPasswordRequest, UserOut, SignupRequest,
     LoginRequest, SignupResponse, RefreshRequest,
     RefreshResponse, VerifyEmailRequest, VerifyEmailResponse
 )
@@ -133,3 +133,78 @@ async def verify_email(
         message="Email verified successfully",
         success=True
     )
+
+@auth_router.post(
+    "/password/forgot",
+    summary="Forgot Password",
+    status_code=status.HTTP_200_OK
+)
+async def send_verification_email(
+    req: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Resend the email verification OTP to the user's email address.
+
+    Args:
+        req: Request containing the user's email address
+        db: Database session
+
+    Returns:
+        Success message if email is sent
+
+    Raises:
+        HTTPException: If resending email fails
+    """
+    auth_service = AuthService(db)
+    await auth_service.resend_verification_email(req.email)
+    
+    return {"message": f"Verification email sent to {req.email}"}
+
+@auth_router.post(
+    "/password/verify-otp",
+    summary="Verify OTP for Forgot Password",
+    status_code=status.HTTP_200_OK
+)
+async def verify_forgot_password_otp(
+    req: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Verify the OTP sent to the user's email for password reset.
+
+    Args:
+        req: Request containing email and OTP
+        db: Database session
+    Returns:
+        Success message if OTP is valid
+        """
+    auth_service = AuthService(db)
+    return await auth_service.verify_otp(req.email, req.otp)
+    
+@auth_router.post(
+    "/password/reset",
+    summary="Reset Password",
+    status_code=status.HTTP_200_OK
+)
+async def reset_password(
+    req: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Reset the user's password using the provided OTP and new password.
+
+    Args:
+        req: Request containing OTP and new password
+        db: Database session
+
+    Returns:
+        Success message if password is reset
+
+    Raises:
+        HTTPException: If OTP is invalid or password reset fails
+    """
+    auth_service = AuthService(db)
+    await auth_service.reset_password(req.otp, req.new_password)
+    
+    return {"message": "Password has been reset successfully"}

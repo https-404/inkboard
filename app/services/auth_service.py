@@ -397,3 +397,119 @@ class AuthService:
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Database error validating token.",
             )
+
+    async def _forgot_password(self, email: str) -> bool:
+
+        """
+        Initiate forgot password process by sending OTP to user's email.
+        """
+        try:
+            # First get the user
+            stmt = select(User).where(User.email == email)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found.",
+                )
+
+            # Generate and send OTP
+            otp_service = OtpService(self.db)
+            await otp_service.store_and_send_otp(
+                user_id=user.id,
+                email=email,
+                purpose="password_reset"
+            )
+            return True
+
+        except Exception as e:
+            logger.error(f"[AuthService] Error in forgot password process: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to initiate forgot password process."
+            )
+        
+
+    async def verify_otp(self, email: str, otp: str) -> str:
+        """
+        Verify OTP for password reset.
+        """
+        try:
+            # First get the user
+            stmt = select(User).where(User.email == email)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found.",
+                )
+
+            otp_service = OtpService(self.db)
+            is_valid = await otp_service.verify_otp(user.id, otp, "password_reset")
+            
+            if not is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or expired OTP.",
+                )
+
+            logger.info(f"[AuthService] OTP verified for password reset for user {email}")
+            return "userid:" + str(user.id)
+
+        except SQLAlchemyError:
+            logger.exception("[AuthService] Database error during OTP verification.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to verify OTP.",
+            )
+        
+    async def reset_password(self, email: str, otp: str, new_password: str) -> bool:
+        """
+        Reset user's password using OTP.
+        """
+        try:
+            # First get the user
+            stmt = select(User).where(User.email == email)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found.",
+                )
+
+            otp_service = OtpService(self.db)
+            is_valid = await otp_service.verify_otp(user.id, otp, "password_reset")
+            
+            if not is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or expired OTP.",
+                )
+
+            stmt = (
+                update(User)
+                .where(User.id == user.id)
+                .values(
+                    hashed_password=hash_password(new_password),
+                    updated_at=utc_now()
+                )
+            )
+            await self.db.execute(stmt)
+            await self.db.commit()
+
+            logger.info(f"[AuthService] Password reset for user {email}")
+            return True
+
+        except SQLAlchemyError:
+            await self.db.rollback()
+            logger.exception("[AuthService] Database error during password reset.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to reset password.",
+            ) 
