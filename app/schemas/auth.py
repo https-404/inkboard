@@ -23,6 +23,16 @@ class TokenPair(TokenBase):
     refresh_token: str
 
 # Request Models
+class VerifyEmailRequest(BaseModel):
+    """Request payload for email verification"""
+    email: EmailStr = Field(..., example="john@example.com")
+    otp: Annotated[str, StringConstraints(min_length=6, max_length=6, pattern=r'^\d{6}$')] = Field(..., example="123456")
+
+class VerifyEmailResponse(BaseResponse):
+    """Response for email verification"""
+    pass
+
+# Request Models
 class SignupRequest(BaseModel):
     """Request payload for user signup"""
     email: EmailStr = Field(..., example="john@example.com")

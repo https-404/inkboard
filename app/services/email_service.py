@@ -4,7 +4,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 # Template engine
 env = Environment(
-    loader=FileSystemLoader("app/templates/emails"),
+    loader=FileSystemLoader("app/templates/email"),
     autoescape=select_autoescape(["html", "xml"])
 )
 

@@ -5,7 +5,7 @@ from app.core.deps import get_db
 from app.schemas.auth import (
     LoginResponse, UserOut, SignupRequest,
     LoginRequest, SignupResponse, RefreshRequest,
-    RefreshResponse
+    RefreshResponse, VerifyEmailRequest, VerifyEmailResponse
 )
 from app.services.auth_service import AuthService
 
@@ -79,13 +79,13 @@ async def login(
 
 @auth_router.post(
     "/refresh",
-    summary="Refresh Access and Refresh Tokens",
-    response_model=LoginResponse,  # Using LoginResponse as it contains both tokens
+    summary="Refresh Access Token",
+    response_model=RefreshResponse
 )
 async def refresh_token(
     req: RefreshRequest,
     db: AsyncSession = Depends(get_db),
-):
+) -> RefreshResponse:
     """
     Refresh access token using a valid refresh token.
     
@@ -99,11 +99,37 @@ async def refresh_token(
     Raises:
         HTTPException: If refresh token is invalid, expired, or revoked
     """
-    try:
-        service = AuthService(db)
-        return await service.refresh_token(req)
-    except ValueError as e:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail=str(e)
-        )
+    service = AuthService(db)
+    return await service.refresh(req)
+
+
+@auth_router.post(
+    "/verify-email",
+    summary="Verify Email Address",
+    response_model=VerifyEmailResponse,
+    status_code=status.HTTP_200_OK
+)
+async def verify_email(
+    req: VerifyEmailRequest,
+    db: AsyncSession = Depends(get_db),
+) -> VerifyEmailResponse:
+    """
+    Verify user's email address using the OTP sent during signup.
+
+    Args:
+        req: Email verification request containing email and OTP
+        db: Database session
+
+    Returns:
+        VerifyEmailResponse: Success message if verification is successful
+
+    Raises:
+        HTTPException: If OTP is invalid or expired
+    """
+    auth_service = AuthService(db)
+    await auth_service.verify_email(req.email, req.otp)
+    
+    return VerifyEmailResponse(
+        message="Email verified successfully",
+        success=True
+    )

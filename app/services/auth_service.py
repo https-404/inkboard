@@ -4,9 +4,10 @@ from datetime import datetime, timedelta, timezone
 import jwt
 from app.core.config import settings
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, and_
+from sqlalchemy import select, update, and_, or_
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from fastapi import HTTPException, status
+from app.services.otp_service import OtpService
 
 from app.db.models.user import User
 from app.db.models.token import Token
@@ -147,19 +148,56 @@ class AuthService:
 
     async def signup(self, req: SignupRequest) -> SignupResponse:
         try:
+            existing_user = await self.db.execute(
+                select(User).where(
+                    or_(User.email == req.email.lower(), User.username == req.username)
+                )
+            )
+            if existing_user.scalar_one_or_none():
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Email or username already exists.",
+                )
+
+
+            email = req.email.lower()
+
+            otp_service = OtpService(self.db)
+            if not await otp_service.is_valid_email(email):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid email address. Please provide a valid email.",
+                )
+            # Create the user
             user = User(
-                email=req.email.lower(),
+                email=email,
                 username=req.username,
                 hashed_password=hash_password(req.password),
+                is_verified=False,  
             )
             self.db.add(user)
             await self.db.commit()
             await self.db.refresh(user)
 
-            logger.info(f"[AuthService] Created user {req.email}")
+            # Now send the verification OTP
+            email_sent = await otp_service.store_and_send_otp(
+                user_id=user.id,
+                email=email,
+                purpose="email_verification"
+            )
+            
+            if not email_sent:
+                # If email sending fails, roll back the user creation
+                await self.db.rollback()
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="Failed to send verification email. Please try again.",
+                )
+
+            logger.info(f"[AuthService] Created unverified user {email}")
 
             return SignupResponse(
-                message="Signup successful, please verify your email",
+                message="Signup successful. Please check your email for verification code.",
                 success=True
             )
 
@@ -170,7 +208,8 @@ class AuthService:
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Email or username already exists.",
             )
-
+        except HTTPException:
+            raise
         except SQLAlchemyError:
             await self.db.rollback()
             logger.exception("[AuthService] Database error during signup.")
@@ -253,6 +292,55 @@ class AuthService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Failed to refresh token.",
+            )
+
+    async def verify_email(self, email: str, otp: str) -> bool:
+        """
+        Verify user's email using OTP.
+        """
+        try:
+            # First get the user
+            stmt = select(User).where(User.email == email)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+            
+            if not user:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="User not found.",
+                )
+
+            # Check if the OTP is valid
+            otp_service = OtpService(self.db)
+            is_valid = await otp_service.verify_otp(user.id, otp, "email_verification")
+            
+            if not is_valid:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Invalid or expired OTP.",
+                )
+
+            # Update user's verified status
+            stmt = (
+                update(User)
+                .where(User.id == user.id)
+                .values(
+                    is_verified=True,
+                    verified_at=utc_now()
+                )
+            )
+            await self.db.execute(stmt)
+            await self.db.commit()
+
+            logger.info(f"[AuthService] Email verified for user {email}")
+            return True
+
+        except SQLAlchemyError:
+            await self.db.rollback()
+            logger.exception("[AuthService] Database error during email verification.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to verify email.",
             )
 
     async def _issue_token_pair(
