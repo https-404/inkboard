@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import Optional
-from pydantic import BaseModel, EmailStr, Field, constr
+from typing import Optional, Annotated
+from pydantic import BaseModel, EmailStr, Field, StringConstraints, ConfigDict
 import uuid
-
 
 # -------- Base --------
 class UserBase(BaseModel):
     email: EmailStr
-    username: constr(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')
+    username: Annotated[str, StringConstraints(min_length=3, max_length=50, pattern=r'^[a-zA-Z0-9_-]+$')]
 
 class BaseResponse(BaseModel):
     message: str
@@ -15,7 +14,7 @@ class BaseResponse(BaseModel):
 
 # -------- Requests --------
 class SignupRequest(UserBase):
-    password: constr(min_length=8, max_length=72)
+    password: Annotated[str, StringConstraints(min_length=8, max_length=72)]
 
 class LoginRequest(BaseModel):
     email: EmailStr
@@ -26,14 +25,14 @@ class RefreshTokenRequest(BaseModel):
 
 class VerifyEmailRequest(BaseModel):
     email: EmailStr
-    otp: constr(min_length=6, max_length=6, pattern=r'^\d{6}$')
+    otp: Annotated[str, StringConstraints(min_length=6, max_length=6, pattern=r'^\d{6}$')]
 
 class ForgotPasswordRequest(BaseModel):
     email: EmailStr
 
 class ResetPasswordRequest(BaseModel):
-    otp: constr(min_length=6, max_length=6, pattern=r'^\d{6}$')
-    new_password: constr(min_length=8, max_length=72)
+    otp: Annotated[str, StringConstraints(min_length=6, max_length=6, pattern=r'^\d{6}$')]
+    new_password: Annotated[str, StringConstraints(min_length=8, max_length=72)]
 
 class RefreshRequest(BaseModel):
     refresh_token: str
@@ -52,8 +51,7 @@ class UserOut(UserBase):
     updated_at: Optional[datetime] = None
     last_login: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class SignupResponse(BaseResponse): pass
 class LoginResponse(TokenPair): pass
@@ -61,3 +59,8 @@ class VerifyEmailResponse(BaseResponse): pass
 class RefreshResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+class ForgotPasswordResponse(BaseResponse): pass
+class ResetPasswordResponse(BaseResponse): pass
+class ResendVerificationEmailResponse(BaseResponse): pass
+class VerifyOTPResponse(BaseResponse): pass
+class SendVerificationEmailResponse(BaseResponse): pass
