@@ -18,6 +18,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         super().__init__(app)
         self.exempt_paths = exempt_paths or [
             "/api/v1/auth/",
+            "/api/v1/inkboard/storage/",
             "/docs",
             "/openapi.json",
             "/favicon.ico"

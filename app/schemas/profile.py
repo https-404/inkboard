@@ -4,6 +4,7 @@ from pydantic import BaseModel, EmailStr
 
 #---------------- REQUESTS -----------------------------------
 class UpdateProfileRequest(BaseModel):
+    username: Optional[str] = None
     first_name: Optional[str] = None
     last_name: Optional[str] = None
     bio: Optional[str] = None

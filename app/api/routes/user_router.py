@@ -21,6 +21,7 @@ async def get_profile(
 
 @user_router.post("/me", response_model=GetUserProfileResponse)
 async def create_or_update_profile(
+    username: Optional[str] = Form(None),
     first_name: Optional[str] = Form(None),
     last_name: Optional[str] = Form(None),
     bio: Optional[str] = Form(None),
@@ -34,6 +35,7 @@ async def create_or_update_profile(
     """
     user_service = UserService(db)
     update_data = UpdateProfileRequest(
+        username=username,
         first_name=first_name,
         last_name=last_name,
         bio=bio,
@@ -47,6 +49,7 @@ async def create_or_update_profile(
 
 @user_router.put("/me", response_model=GetUserProfileResponse)
 async def update_profile(
+    username: Optional[str] = Form(None),
     first_name: Optional[str] = Form(None),
     last_name: Optional[str] = Form(None),
     bio: Optional[str] = Form(None),
@@ -60,6 +63,7 @@ async def update_profile(
     """
     user_service = UserService(db)
     update_data = UpdateProfileRequest(
+        username=username,
         first_name=first_name,
         last_name=last_name,
         bio=bio,

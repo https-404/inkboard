@@ -1,7 +1,8 @@
 import uuid
-from sqlalchemy import select, update
+from sqlalchemy import select, update, or_
 from sqlalchemy.ext.asyncio import AsyncSession
 from fastapi import HTTPException, status
+from sqlalchemy.exc import IntegrityError
 
 from app.db.models.user import User
 from app.schemas.profile import GetUserProfileResponse, UpdateProfileRequest
@@ -61,6 +62,22 @@ class UserService:
         
         # Prepare update dictionary
         update_dict = {}
+        
+        # Check username uniqueness if being updated
+        if update_data.username is not None:
+            # Check if username is already taken by another user
+            stmt = select(User).where(
+                User.username == update_data.username,
+                User.id != user.id
+            )
+            result = await self.db.execute(stmt)
+            existing_user = result.scalar_one_or_none()
+            if existing_user:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Username already taken",
+                )
+            update_dict["username"] = update_data.username
         
         if update_data.first_name is not None:
             update_dict["first_name"] = update_data.first_name
