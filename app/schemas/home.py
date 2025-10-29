@@ -2,7 +2,7 @@ from typing import List
 from pydantic import BaseModel
 
 from app.schemas.article import ArticleListItemResponse
-from app.schemas.search import UserBasicInfo
+from app.schemas.follow import UserBasicInfo
 
 
 #---------------- RESPONSES -----------------------------------
