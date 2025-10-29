@@ -4,7 +4,7 @@
 
 project:
   name: "InkBoard"
-  description: >
+  description: |
     A modern publishing platform built with FastAPI, SQLAlchemy (async),
     PostgreSQL, Redis, MinIO, and JWT authentication. Features user signup/login,
     article publishing, tagging, and rich interactions (claps, comments, follows).
@@ -18,8 +18,8 @@ architecture:
       - Services → `app/services/<domain>_service.py`
       - Models → `app/db/models/<domain>.py`
   - Shared logic → `app/core/` (config, security, deps, minio_client, etc.)
-  - Do NOT auto-create multiple DTO files (no requests.py / responses.py)
-  - Always prefer async/await, even in services.
+  - Never auto-create multiple DTO files (no requests.py / responses.py)
+  - Always prefer async/await, even in services
 
 style:
   python:
@@ -71,6 +71,8 @@ database:
   models_style:
     naming: snake_case
     schema: public
+  extensions:
+    - uuid-ossp (must be enabled in migrations that use UUID functions)
   avoid:
     - raw SQL
     - sync sessions
@@ -79,7 +81,7 @@ integrations:
   redis: true
   minio: true
   celery: optional
-  smtp: via fastapi-mail
+  smtp: "fastapi-mail"
 
 cursor:
   follow_rules:

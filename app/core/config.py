@@ -15,7 +15,8 @@ class Settings(BaseSettings):
 
     # App
     APP_NAME: str 
-    APP_VERSION: str 
+    APP_VERSION: str
+    SERVER_URL: str = "http://127.0.0.1:8000"  # Base URL for storage URLs 
 
     #Minio
     MINIO_ENDPOINT: str
