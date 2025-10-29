@@ -22,6 +22,9 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema by converting IDs to UUID."""
+    # Enable UUID extension if not already enabled
+    op.execute('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"')
+    
     # Drop existing foreign key constraints first
     op.drop_constraint('fk_token_user_id_user', 'token', type_='foreignkey')
     op.drop_constraint('fk_otpcode_user_id_user', 'otpcode', type_='foreignkey')
