@@ -123,6 +123,68 @@ async def upload_pfp(file: UploadFile, user_id: str) -> str:
     return object_name
 
 
+async def upload_article_image(file: UploadFile, user_id: str) -> str:
+    """
+    Upload and compress image for article content.
+    Returns the object path (articles/{user_id}/{uuid}.jpg).
+    
+    Args:
+        file: Uploaded file
+        user_id: User UUID as string
+        
+    Returns:
+        Object path like "articles/{user_id}/{uuid}.jpg"
+    """
+    # Validate file type
+    content_type = file.content_type.lower() if file.content_type else ""
+    if content_type not in ALLOWED_IMAGE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid file type. Allowed: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}"
+        )
+    
+    # Validate file size
+    contents = await file.read()
+    if len(contents) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"File size exceeds {MAX_FILE_SIZE / (1024*1024):.0f}MB limit"
+        )
+    
+    # Open and compress image (allow higher quality for article images)
+    try:
+        image = Image.open(io.BytesIO(contents))
+        # For article images, use larger max size (1920x1920) but still compress
+        compressed_data = compress_image(image, max_size=(1920, 1920), quality=90)
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid image file: {str(e)}"
+        )
+    
+    # Generate unique filename
+    file_id = uuid.uuid4().hex
+    object_name = f"articles/{user_id}/{file_id}.jpg"
+    
+    try:
+        minio_client.put_object(
+            bucket_name=settings.MINIO_BUCKET_NAME,
+            object_name=object_name,
+            data=io.BytesIO(compressed_data),
+            length=len(compressed_data),
+            content_type="image/jpeg",
+        )
+        print(f"✅ Uploaded Article Image: {object_name}")
+    except S3Error as e:
+        print(f"❌ MinIO upload failed: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to upload article image"
+        )
+    
+    return object_name
+
+
 async def delete_file(object_name: str) -> bool:
     """
     Delete a file from MinIO.

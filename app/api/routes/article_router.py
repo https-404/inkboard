@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Depends, Query, Path, status, HTTPException
+from fastapi import APIRouter, Depends, Query, Path, status, HTTPException, UploadFile, File
 from typing import Optional, List
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError
 from app.core.deps import get_db
 from app.api.deps.auth import get_current_user_id, get_optional_user_id
 from app.services.article_service import ArticleService
+from app.services.minio_service import get_storage_url
 from app.schemas.article import (
     CreateArticleRequest,
     UpdateArticleRequest,
@@ -12,6 +13,7 @@ from app.schemas.article import (
     ArticleListItemResponse,
     ClapArticleRequest,
     ClapResponse,
+    UploadImageResponse,
 )
 
 article_router = APIRouter(prefix="/articles", tags=["Articles"])
@@ -165,4 +167,29 @@ async def clap_article(
         count=request.count,
     )
     return ClapResponse(**result)
+
+
+@article_router.post("/upload-image", response_model=UploadImageResponse, status_code=status.HTTP_201_CREATED)
+async def upload_article_image_endpoint(
+    image: UploadFile = File(..., description="Image file to upload"),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Upload an image for article content.
+    
+    Requires authentication. Uploads and compresses the image, returns the storage URL
+    that can be used in article ImageBlock content.
+    
+    The returned image_url should be used in the 'content' field of an ImageBlock.
+    """
+    from app.services.minio_service import upload_article_image as upload_image_func
+    
+    image_path = await upload_image_func(image, user_id)
+    image_url = get_storage_url(image_path)
+    
+    return UploadImageResponse(
+        image_url=image_url,
+        image_path=image_path,
+    )
 

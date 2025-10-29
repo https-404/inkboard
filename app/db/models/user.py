@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from app.db.models.article import Article
+    from app.db.models.follow import Follow
 
 class User(Base):
     """
@@ -34,3 +35,15 @@ class User(Base):
     
     # Relationships
     articles = relationship("Article", back_populates="author")
+    following = relationship(
+        "Follow",
+        foreign_keys="Follow.follower_id",
+        back_populates="follower",
+        cascade="all, delete-orphan"
+    )
+    followers = relationship(
+        "Follow",
+        foreign_keys="Follow.following_id",
+        back_populates="following_user",
+        cascade="all, delete-orphan"
+    )

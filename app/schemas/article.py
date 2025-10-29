@@ -101,6 +101,12 @@ class ClapArticleRequest(BaseModel):
     count: int = Field(1, ge=1, le=50, description="Number of claps (1-50)")
 
 
+class UploadImageResponse(BaseModel):
+    """Response schema for image upload."""
+    image_url: str = Field(..., description="Full storage URL for the uploaded image")
+    image_path: str = Field(..., description="Storage path relative to bucket")
+
+
 #---------------- RESPONSES -----------------------------------
 class TagResponse(BaseModel):
     """Tag response schema."""
