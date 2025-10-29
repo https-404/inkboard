@@ -1,4 +1,28 @@
 services:
+  # FastAPI Application (commented out - uncomment when ready to use)
+  # app:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: inkboard-app
+  #   restart: always
+  #   environment:
+  #     DATABASE_URL: postgresql+asyncpg://inkboardadmin:inkboardadmin123@postgres:5432/inkboarddb
+  #     MINIO_ENDPOINT: http://minio:9000
+  #     SERVER_URL: http://localhost:8000
+  #     # Add other environment variables from .env as needed
+  #   ports:
+  #     - '8000:8000'
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy
+  #     minio:
+  #       condition: service_started
+  #   volumes:
+  #     - ./app:/app/app  # Mount app directory for development (optional)
+  #   networks:
+  #     - inkboard-network
+
   postgres:
     image: postgres:16
     restart: always
@@ -10,6 +34,13 @@ services:
       - '5432:5432'
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U inkboardadmin -d inkboarddb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    # networks:
+    #   - inkboard-network
 
   minio:
     image: minio/minio:latest
@@ -23,6 +54,8 @@ services:
       - '9001:9001'   # Web UI
     volumes:
       - minio-data:/data
+    # networks:
+    #   - inkboard-network
 
   minio-init:
     image: minio/mc:latest
@@ -39,3 +72,8 @@ services:
 volumes:
   pgdata:
   minio-data:
+
+# Uncomment when using app service
+# networks:
+#   inkboard-network:
+#     driver: bridge
