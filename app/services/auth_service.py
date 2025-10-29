@@ -179,25 +179,10 @@ class AuthService:
             await self.db.commit()
             await self.db.refresh(user)
 
-            # Now send the verification OTP
-            email_sent = await otp_service.store_and_send_otp(
-                user_id=user.id,
-                email=email,
-                purpose="email_verification"
-            )
-            
-            if not email_sent:
-                # If email sending fails, roll back the user creation
-                await self.db.rollback()
-                raise HTTPException(
-                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                    detail="Failed to send verification email. Please try again.",
-                )
-
-            logger.info(f"[AuthService] Created unverified user {email}")
+            logger.info(f"[AuthService] Created user {email}")
 
             return SignupResponse(
-                message="Signup successful. Please check your email for verification code.",
+                message="Signup successful.",
                 success=True
             )
 

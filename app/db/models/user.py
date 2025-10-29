@@ -1,8 +1,12 @@
 import uuid
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy import String, Boolean, Text, DateTime, func
 from sqlalchemy.dialects.postgresql import UUID
 from app.db.base import Base
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.db.models.article import Article
 
 class User(Base):
     """
@@ -27,3 +31,6 @@ class User(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
     )
     last_login: Mapped["DateTime | None"] = mapped_column(DateTime(timezone=True), nullable=True)
+    
+    # Relationships
+    articles = relationship("Article", back_populates="author")
