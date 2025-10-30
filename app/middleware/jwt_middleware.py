@@ -19,7 +19,6 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
         self.exempt_paths = exempt_paths or [
             "/api/v1/auth/",
             "/api/v1/inkboard/storage/",
-            "/api/v1/articles",  # Article listing uses optional auth
             "/api/v1/home/trending",  # Trending articles is public
             "/docs",
             "/openapi.json",

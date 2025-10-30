@@ -136,7 +136,7 @@ class ArticleService:
         if request.status == "published":
             published_at = datetime.now(timezone.utc)
         
-        # Create article
+        # Create article (avoid touching relationship collections before we set up associations)
         article = Article(
             author_id=uuid.UUID(author_id),
             title=request.title,
@@ -155,13 +155,14 @@ class ArticleService:
         # Handle tags
         if request.tags:
             tags = await self._get_or_create_tags(request.tags)
-            article.tags = tags
+            # Insert associations explicitly to avoid async lazy-load on relationship
+            for tag in tags:
+                self.db.add(ArticleTag(article_id=article.id, tag_id=tag.id))
             await self.db.flush()
+        # Eagerly load author and tags to avoid lazy loads that cause MissingGreenlet
+        await self.db.refresh(article, ["author", "tags"])
         
-        await self.db.refresh(article)
-        await self.db.refresh(article, ["author"])
-        
-        # Get author
+        # Get author (already loaded)        
         author = article.author
         
         return ArticleDetailResponse(
@@ -368,8 +369,9 @@ class ArticleService:
             await self.db.execute(
                 delete(ArticleTag).where(ArticleTag.article_id == article.id)
             )
-            # Add new associations
-            article.tags = tags
+            # Add new associations explicitly to avoid async lazy-load
+            for tag in tags:
+                self.db.add(ArticleTag(article_id=article.id, tag_id=tag.id))
             await self.db.flush()
         
         await self.db.commit()
