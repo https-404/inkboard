@@ -22,7 +22,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             "/api/v1/home/trending",  # Trending articles is public
             "/docs",
             "/openapi.json",
-            "/favicon.ico"
+            "/favicon.ico",
             "/redoc",
         ]
 

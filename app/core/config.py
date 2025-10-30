@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     EMAIL_FROM_NAME: str
     SMTP_STARTTLS: bool
     SMTP_SSL: bool
+    # Moderation
+    BAD_WORDS: list[str] = [
+        "spam",
+        "scam",
+        "hate",
+        "violence",
+    ]
+    REPORT_THROTTLE_PER_MIN: int = 5
 
 
 settings = Settings()

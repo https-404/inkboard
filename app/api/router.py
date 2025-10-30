@@ -8,6 +8,7 @@ from app.api.routes.article_router import article_router
 from app.api.routes.follow_router import follow_router
 from app.api.routes.home_router import home_router
 from app.api.routes.comment_router import comment_router
+from app.api.routes.report_router import report_router
 
 api_router = APIRouter(prefix="/api/v1")
 
@@ -26,4 +27,5 @@ api_router.include_router(article_router)
 api_router.include_router(follow_router)
 api_router.include_router(home_router)
 api_router.include_router(comment_router)
+api_router.include_router(report_router)
 
