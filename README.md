@@ -69,12 +69,27 @@ ACCESS_TOKEN_EXPIRE_MINUTES=30
 REFRESH_TOKEN_EXPIRE_DAYS=7
 ```
 
-### 2. Start PostgreSQL and Redis
+### 2. Start Postgres and MinIO with Docker (recommended for dev)
 
-If using Docker, run:
+This repo includes `docker-compose.yaml` for Postgres and MinIO. The app service is provided but commented out so you can decide when to run the backend in Docker.
+
+Run only services (db + storage):
 
 ```bash
-docker-compose up -d
+docker compose up -d postgres minio minio-init
+docker compose ps
+```
+
+Services:
+- Postgres: `localhost:5432` (user `inkboardadmin`, password `inkboardadmin123`, db `inkboarddb`)
+- MinIO S3 API: `http://127.0.0.1:9000`, Console: `http://127.0.0.1:9001` (login `inkboardadmin` / `inkboardadmin123`)
+
+Keep the `app` service commented out for local development with hot reload. When ready to containerize the app, uncomment the `app` service in `docker-compose.yaml` and run:
+
+```bash
+docker compose up --build -d app
+# or to run all services
+docker compose up --build -d
 ```
 
 ### 3. Apply Database Migrations
@@ -83,7 +98,7 @@ docker-compose up -d
 alembic upgrade head
 ```
 
-### 4. Run the FastAPI Server
+### 4. Run the FastAPI Server (local)
 
 ```bash
 uvicorn app.main:app --reload
@@ -95,7 +110,17 @@ Now open:
 http://localhost:8000/docs
 ```
 
-You’ll see the auto-generated Swagger UI with all endpoints.
+You’ll see Swagger UI. ReDoc is available at `http://localhost:8000/redoc`.
+
+### 5. Seed dummy data
+
+Run the async seed script to insert users (with hashed passwords), tags, articles, follows, claps, and comments:
+
+```bash
+python -m app.scripts.seed
+```
+
+The script prints the plain password used for all generated users (default: `Password123!`).
 
 ---
 
