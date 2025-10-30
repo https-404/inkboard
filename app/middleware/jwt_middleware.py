@@ -23,6 +23,7 @@ class JWTAuthMiddleware(BaseHTTPMiddleware):
             "/docs",
             "/openapi.json",
             "/favicon.ico"
+            "/redoc",
         ]
 
     async def dispatch(self, request: Request, call_next):
